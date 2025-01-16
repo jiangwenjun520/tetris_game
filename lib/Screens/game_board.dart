@@ -18,21 +18,42 @@ class GameBoard extends StatefulWidget {
 class _GameBoardState extends State<GameBoard> {
   late GameState gameState;
   Timer? gameTimer;
+  Timer? timeTimer;
+  int gameTimeInSeconds = 0;
+
+  String get formattedTime {
+    int minutes = gameTimeInSeconds ~/ 60;
+    int seconds = gameTimeInSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
 
   @override
   void initState() {
     super.initState();
     gameState = GameState();
     startGame();
+    _startTimeCounter();
   }
 
   @override
   void dispose() {
     gameTimer?.cancel();
+    timeTimer?.cancel();
     super.dispose();
   }
 
-  /// 开始游戏X
+  void _startTimeCounter() {
+    timeTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (timer) {
+        setState(() {
+          gameTimeInSeconds++;
+        });
+      },
+    );
+  }
+
+  /// 开始游戏
   void startGame() {
     gameState.currentPiece.intializePiece();
     _startGameLoop();
@@ -42,7 +63,7 @@ class _GameBoardState extends State<GameBoard> {
   void _startGameLoop() {
     gameTimer?.cancel();
     gameTimer = Timer.periodic(
-      const Duration(milliseconds: GameConfig.frameRate),
+      Duration(milliseconds: GameConfig.currentFrameRate),
       _onGameTick,
     );
   }
@@ -55,6 +76,7 @@ class _GameBoardState extends State<GameBoard> {
 
       if (gameState.isGameOver) {
         timer.cancel();
+        timeTimer?.cancel();
         _showGameOverDialog();
       } else {
         gameState.currentPiece.movePiece(Direction.down);
@@ -66,7 +88,7 @@ class _GameBoardState extends State<GameBoard> {
   void _showGameOverDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // 止点击外部关闭
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white.withOpacity(0.9),
         shape: RoundedRectangleBorder(
@@ -74,14 +96,12 @@ class _GameBoardState extends State<GameBoard> {
         ),
         title: Column(
           children: [
-            // 游戏结束图标
             Icon(
               Icons.sports_esports,
               size: 50,
               color: GameConfig.tetrominoColors[TetrominoShapes.L],
             ),
             const SizedBox(height: 10),
-            // 游戏结束文本
             const Text(
               'GAME OVER',
               textAlign: TextAlign.center,
@@ -103,14 +123,37 @@ class _GameBoardState extends State<GameBoard> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Your Score',
-                style: TextStyle(
+              Text(
+                'Difficulty: ${GameConfig.difficultyNames[GameConfig.currentDifficulty]}',
+                style: const TextStyle(
                   fontSize: GameConfig.fontSize,
                   color: Colors.black54,
                 ),
               ),
               const SizedBox(height: 10),
+              const Text(
+                'Time',
+                style: TextStyle(
+                  fontSize: GameConfig.fontSize,
+                  color: Colors.black54,
+                ),
+              ),
+              Text(
+                formattedTime,
+                style: TextStyle(
+                  fontSize: GameConfig.fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: GameConfig.tetrominoColors[TetrominoShapes.I],
+                ),
+              ),
+              const SizedBox(height: 15),
+              const Text(
+                'Score',
+                style: TextStyle(
+                  fontSize: GameConfig.fontSize,
+                  color: Colors.black54,
+                ),
+              ),
               Text(
                 '${gameState.score}',
                 style: TextStyle(
@@ -124,7 +167,6 @@ class _GameBoardState extends State<GameBoard> {
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
-          // 重新开始按钮
           ElevatedButton(
             onPressed: () {
               _resetGame();
@@ -162,7 +204,9 @@ class _GameBoardState extends State<GameBoard> {
   void _resetGame() {
     setState(() {
       gameState.reset();
+      gameTimeInSeconds = 0;
       startGame();
+      _startTimeCounter();
     });
   }
 
@@ -196,18 +240,35 @@ class _GameBoardState extends State<GameBoard> {
       appBar: AppBar(
         backgroundColor: GameConfig.backgroundColor,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(
-              Icons.emoji_events,
-              color: GameConfig.tetrominoColors[TetrominoShapes.L],
-              size: 28,
+            Row(
+              children: [
+                Icon(
+                  Icons.emoji_events,
+                  color: GameConfig.tetrominoColors[TetrominoShapes.L],
+                  size: 28,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Best: ${gameState.highScore}',
+                  style: TextStyle(
+                    color: GameConfig.tetrominoColors[TetrominoShapes.L],
+                    fontSize: GameConfig.fontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
             Text(
-              'Best: ${gameState.highScore}',
-              style: TextStyle(
-                color: GameConfig.tetrominoColors[TetrominoShapes.L],
+              GameConfig.difficultyNames[GameConfig.currentDifficulty]!,
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: GameConfig.fontSize,
                 fontWeight: FontWeight.bold,
               ),
@@ -216,45 +277,58 @@ class _GameBoardState extends State<GameBoard> {
         ),
       ),
       body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // 分数和下一个方块预览
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          children: [
+            // 状态栏
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // 分数显示
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 10, horizontal: 20),
-                    child: Column(
-                      children: [
-                        const Text(
-                          'SCORE',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: GameConfig.fontSize * 0.8,
-                            fontWeight: FontWeight.w500,
-                          ),
+                  Column(
+                    children: [
+                      const Text(
+                        'SCORE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: GameConfig.fontSize * 0.8,
+                          fontWeight: FontWeight.w500,
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                          '${gameState.score}',
-                          style: TextStyle(
-                            color:
-                                GameConfig.tetrominoColors[TetrominoShapes.T],
-                            fontSize: GameConfig.titleFontSize * 1.2,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        '${gameState.score}',
+                        style: TextStyle(
+                          color: GameConfig.tetrominoColors[TetrominoShapes.T],
+                          fontSize: GameConfig.titleFontSize,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-
-                  // 分隔
-                  const SizedBox(width: 20),
-
+                  // 时间显示
+                  Column(
+                    children: [
+                      const Text(
+                        'TIME',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: GameConfig.fontSize * 0.8,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        formattedTime,
+                        style: TextStyle(
+                          color: GameConfig.tetrominoColors[TetrominoShapes.I],
+                          fontSize: GameConfig.titleFontSize,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                   // 下一个方块预览
                   Column(
                     children: [
@@ -267,19 +341,24 @@ class _GameBoardState extends State<GameBoard> {
                         ),
                       ),
                       const SizedBox(height: 5),
-                      NextPiecePreview(
-                        nextPiece: gameState.nextPiece,
-                        size: 60,
-                      ),
+                      NextPiecePreview(nextPiece: gameState.nextPiece),
                     ],
                   ),
                 ],
               ),
-
-              // 游戏网格
-              GameGrid(gameState: gameState),
-            ],
-          ),
+            ),
+            // 游戏网格
+            Expanded(
+              child: Center(
+                child: GameGrid(
+                  gameState: gameState,
+                  onMoveLeft: _moveLeft,
+                  onMoveRight: _moveRight,
+                  onRotate: _rotatePiece,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

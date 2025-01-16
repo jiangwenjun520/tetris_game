@@ -13,8 +13,16 @@ This version stays true to the original gameplay mechanics while offering a visu
 - 随机生成不同形状的方块
 - 方块旋转和移动控制
 - 行消除计分系统
-- 游戏难度随分数提升
+- 三种难度级别（Easy/Normal/Hard）
+  - Easy: 较慢的下落速度，适合新手
+  - Normal: 标准下落速度，适合熟练玩家
+  - Hard: 快速下落，高分倍率，适合挑战
+- 游戏时间记录
 - 美观的用户界面
+  - 简洁的顶部状态栏
+  - 实时显示分数和时间
+  - 下一个方块预览
+  - 难度选择菜单
 
 ### 技术架构
 
@@ -26,15 +34,18 @@ This version stays true to the original gameplay mechanics while offering a visu
   - `lib/Screens/`: 包含所有游戏界面
   - `lib/TetrominoShapes/`: 定义所有方块形状
   - `lib/logic/`: 游戏核心逻辑
+  - `lib/widgets/`: 可重用的UI组件
+  - `lib/config/`: 游戏配置
+  - `lib/models/`: 数据模型
   - `lib/main.dart`: 应用入口
-  - `lib/pixels.dart`: 像素渲染相关
 
 ### 游戏规则
 
 1. 使用方向键或屏幕按钮控制方块移动和旋转
 2. 完成一整行方块可消除该行并得分
 3. 方块堆积到顶部时游戏结束
-4. 随着分数增加，方块下落速度会逐渐加快
+4. 不同难度等级有不同的下落速度和分数倍率
+5. 游戏会记录每局用时
 
 ### 安装和运行
 
@@ -53,9 +64,10 @@ This version stays true to the original gameplay mechanics while offering a visu
 
 ### 未来计划
 
+- [x] 添加不同难度级别
+- [x] 优化界面布局
 - [ ] 添加音效和背景音乐
 - [ ] 实现高分排行榜
-- [ ] 添加不同难度级别
 - [ ] 支持自定义主题
 - [ ] 添加多人对战模式
 

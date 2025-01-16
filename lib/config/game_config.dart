@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:Tetris_Fan/TetrominoShapes/shapes.dart';
 
+/// 游戏难度枚举
+enum GameDifficulty {
+  easy,
+  normal,
+  hard,
+}
+
 /// 游戏配置类
 /// 集中管理所有游戏相关的常量和配置
 class GameConfig {
@@ -11,8 +18,28 @@ class GameConfig {
   static const int rowLength = 10; // 列数
   static const int columnLength = 15; // 行数
 
-  /// 游戏刷新率（毫秒）
-  static const int frameRate = 1200;
+  /// 游戏难度配置
+  static const Map<GameDifficulty, int> difficultyFrameRate = {
+    GameDifficulty.easy: 1500, // 简单模式下降速度
+    GameDifficulty.normal: 1200, // 普通模式下降速度
+    GameDifficulty.hard: 800, // 困难模式下降速度
+  };
+
+  static const Map<GameDifficulty, int> difficultyScoreMultiplier = {
+    GameDifficulty.easy: 1, // 简单模式分数倍率
+    GameDifficulty.normal: 2, // 普通模式分数倍率
+    GameDifficulty.hard: 3, // 困难模式分数倍率
+  };
+
+  /// 当前游戏难度（默认普通）
+  static GameDifficulty currentDifficulty = GameDifficulty.normal;
+
+  /// 获取当前难度的帧率
+  static int get currentFrameRate => difficultyFrameRate[currentDifficulty]!;
+
+  /// 获取当前难度的分数倍率
+  static int get currentScoreMultiplier =>
+      difficultyScoreMultiplier[currentDifficulty]!;
 
   /// UI配置
   static const double blockRadius = 4.0; // 方块圆角
@@ -40,4 +67,16 @@ class GameConfig {
   static const Color buttonBackgroundColor = Color(0xffD9D9D9);
   static const Color buttonTextColor = Colors.black54;
   static const double buttonFontSize = 40.0;
+
+  /// 难度选择菜单样式
+  static const TextStyle difficultyMenuTextStyle = TextStyle(
+    fontSize: 24.0,
+    fontWeight: FontWeight.bold,
+  );
+
+  static const Map<GameDifficulty, String> difficultyNames = {
+    GameDifficulty.easy: 'Easy',
+    GameDifficulty.normal: 'Normal',
+    GameDifficulty.hard: 'Hard',
+  };
 }

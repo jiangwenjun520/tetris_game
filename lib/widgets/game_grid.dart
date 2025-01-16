@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:Tetris_Fan/config/game_config.dart';
 import 'package:Tetris_Fan/models/game_state.dart';
-import 'package:Tetris_Fan/pixels.dart';
 import 'package:Tetris_Fan/TetrominoShapes/shapes.dart';
+import 'package:Tetris_Fan/widgets/pixel.dart';
 
 /// 游戏网格组件
 /// 负责渲染游戏主网格界面
 class GameGrid extends StatefulWidget {
   final GameState gameState;
+  final VoidCallback onMoveLeft;
+  final VoidCallback onMoveRight;
+  final VoidCallback onRotate;
 
   const GameGrid({
     Key? key,
     required this.gameState,
+    required this.onMoveLeft,
+    required this.onMoveRight,
+    required this.onRotate,
   }) : super(key: key);
 
   @override
@@ -99,7 +105,17 @@ class _GameGridState extends State<GameGrid> {
   /// 处理方块移动
   void handleMove(Direction direction) {
     lastMoveDirection = direction;
-    widget.gameState.currentPiece.movePiece(direction);
+    switch (direction) {
+      case Direction.left:
+        widget.onMoveLeft();
+        break;
+      case Direction.right:
+        widget.onMoveRight();
+        break;
+      case Direction.down:
+        widget.gameState.currentPiece.movePiece(direction);
+        break;
+    }
   }
 
   /// 处理拖动更新
@@ -129,7 +145,7 @@ class _GameGridState extends State<GameGrid> {
               i < steps && widget.gameState.canMove(direction);
               i++) {
             setState(() {
-              widget.gameState.currentPiece.movePiece(direction);
+              handleMove(direction);
               moved = true;
             });
           }
@@ -147,7 +163,7 @@ class _GameGridState extends State<GameGrid> {
                 i < steps && widget.gameState.canMove(Direction.down);
                 i++) {
               setState(() {
-                widget.gameState.currentPiece.movePiece(Direction.down);
+                handleMove(Direction.down);
                 moved = true;
               });
             }
@@ -227,9 +243,7 @@ class _GameGridState extends State<GameGrid> {
                 row < GameConfig.columnLength) {
               final index = row * GameConfig.rowLength + column;
               if (widget.gameState.currentPiece.position.contains(index)) {
-                setState(() {
-                  widget.gameState.currentPiece.rotatePiece();
-                });
+                widget.onRotate();
               }
             }
           }
@@ -249,38 +263,40 @@ class _GameGridState extends State<GameGrid> {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: GameConfig.rowLength,
-            childAspectRatio: 1.0,
+            childAspectRatio: 1,
           ),
-          itemBuilder: _buildGridItem,
+          itemBuilder: (context, index) {
+            Color color = GameConfig.emptyBlockColor;
+            int row = (index / GameConfig.rowLength).floor();
+            int col = index % GameConfig.rowLength;
+
+            // 检查当前方块
+            if (widget.gameState.currentPiece.position.contains(index)) {
+              color = GameConfig
+                  .tetrominoColors[widget.gameState.currentPiece.type]!;
+            }
+            // 检查已落地的方块
+            else if (widget.gameState.gameBoard[row][col] != null) {
+              color = GameConfig
+                  .tetrominoColors[widget.gameState.gameBoard[row][col]]!;
+            }
+
+            return Pixel(
+              color: color,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(GameConfig.blockRadius),
+                  border: Border.all(
+                    color: color.withOpacity(0.5),
+                    width: GameConfig.blockMargin,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
-  }
-
-  /// 构建网格中的单个方块
-  Widget _buildGridItem(BuildContext context, int index) {
-    final row = (index / GameConfig.rowLength).floor();
-    final column = index % GameConfig.rowLength;
-
-    // 当前移动的方块
-    if (widget.gameState.currentPiece.position.contains(index)) {
-      return Pixels(
-        color: widget.gameState.currentPiece.color,
-      );
-    }
-    // 已经落地的方块
-    else if (widget.gameState.gameBoard[row][column] != null) {
-      final tetrominoShape = widget.gameState.gameBoard[row][column];
-      return Pixels(
-        color: GameConfig.tetrominoColors[tetrominoShape] ??
-            GameConfig.defaultBlockColor,
-      );
-    }
-    // 空白格子
-    else {
-      return Pixels(
-        color: GameConfig.emptyBlockColor,
-      );
-    }
   }
 }
