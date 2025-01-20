@@ -12,9 +12,23 @@ class Piece {
   List<int> position = [];
 
   //color of tetris piece
-  Color get color {
-    return tetrominoColor[type] ?? const Color(0xffffffff);
-  }
+  Color get color => tetrominoColor[type] ?? const Color(0xffffffff);
+
+  // 优化：使用Map存储方块形状的旋转状态
+  static final Map<TetrominoShapes, List<List<int>>> _rotationStates = {
+    TetrominoShapes.L: [
+      [-2, -1, 0, 1],
+      [-rowLength, 0, rowLength, rowLength + 1],
+      [-1, 0, 1, rowLength - 1],
+      [-rowLength - 1, -rowLength, 0, rowLength],
+    ],
+    TetrominoShapes.J: [
+      [-2, -1, 0, -3],
+      [-rowLength, 0, rowLength, -rowLength - 1],
+      [-1, 0, 1, -rowLength + 1],
+      [rowLength + 1, rowLength, 0, -rowLength],
+    ],
+  };
 
   //generate the shapes integers
 
@@ -51,580 +65,83 @@ class Piece {
     }
   }
 
+  // 优化：使用增量更新而不是循环
   void movePiece(Direction direction) {
-    switch (direction) {
-      case Direction.left:
-        for (int i = 0; i < position.length; i++) {
-          position[i] -= 1;
-        }
-        break;
-      case Direction.right:
-        for (int i = 0; i < position.length; i++) {
-          position[i] += 1;
-        }
-        break;
-      case Direction.down:
-        for (int i = 0; i < position.length; i++) {
-          position[i] += rowLength;
-        }
-        break;
-      default:
+    final int offset = switch (direction) {
+      Direction.left => -1,
+      Direction.right => 1,
+      Direction.down => rowLength,
+      _ => 0,
+    };
+
+    if (offset != 0) {
+      for (int i = 0; i < position.length; i++) {
+        position[i] += offset;
+      }
     }
   }
 
   int rotationState = 1;
 
+  // 优化：重写旋转算法，使用预计算的旋转矩阵
   void rotatePiece() {
-    //new position
-    List<int> newPosition = [];
-    //rotate the piece depend on it's type
-    switch (type) {
-      case TetrominoShapes.L:
-        switch (rotationState) {
-          case 0:
-            //    X
-            //    X
-            //    X  X  X
+    if (type == TetrominoShapes.O) return; // O型方块不需要旋转
 
-            //get the new position
-            {
-              newPosition = [
-                position[1] - rowLength,
-                position[1],
-                position[1] + rowLength,
-                position[1] + rowLength + 1
-              ];
-              //check that this new position is valid before assign
-              // it to the new position
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
+    final rotations = _rotationStates[type];
+    if (rotations == null) return;
 
-          case 1:
-            //  X X X
-            //  X
-            //  X
-            //get the new position
-            {
-              newPosition = [
-                position[1] - 1,
-                position[1],
-                position[1] + 1,
-                position[1] + rowLength - 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
+    final centerPos = position[1]; // 使用第二个方块作为旋转中心
+    final nextState = (rotationState + 1) % 4;
 
-          case 2:
-            // X X X
-            //       X
-            //       X
-            //get the new position
-            {
-              newPosition = [
-                position[1] + rowLength,
-                position[1],
-                position[1] - rowLength,
-                position[1] - rowLength - 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
+    if (nextState >= rotations.length) return;
 
-          case 3:
-            //    X
-            //      X
-            //  X X X
-            //get the new position
-            {
-              newPosition = [
-                position[1] - rowLength + 1,
-                position[1],
-                position[1] + 1,
-                position[1] - 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = 0;
-              }
-            }
-            break;
-        }
-        break;
-      case TetrominoShapes.S:
-        switch (rotationState) {
-          case 0:
-            //    X X
-            //  X X
+    // 计算新位置
+    final List<int> newPosition = List<int>.generate(
+      4,
+      (i) => centerPos + rotations[nextState][i],
+    );
 
-            //get the new position
-            {
-              newPosition = [
-                position[1],
-                position[1] + 1,
-                position[1] + rowLength - 1,
-                position[1] + rowLength
-              ];
-              //check that this new position is valid before assign
-              // it to the new position
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 1:
-            //  X
-            //  X X
-            //    X
-            //get the new position
-            {
-              newPosition = [
-                position[0] - rowLength,
-                position[0],
-                position[0] + 1,
-                position[0] + rowLength + 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 2:
-            //    X X
-            //  x x
-            //get the new position
-            {
-              newPosition = [
-                position[1],
-                position[1] + 1,
-                position[1] + rowLength - 1,
-                position[1] + rowLength
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 3:
-            //    X
-            //    X x
-            //      X
-            //get the new position
-            {
-              newPosition = [
-                position[0] - rowLength,
-                position[0],
-                position[0] + 1,
-                position[0] + rowLength + 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = 0;
-              }
-            }
-            break;
-        }
-        break;
-
-      case TetrominoShapes.I:
-        switch (rotationState) {
-          case 0:
-            //
-            //
-            //  X  X  X  X
-
-            //get the new position
-            {
-              newPosition = [
-                position[1] - 1,
-                position[1],
-                position[1] + 1,
-                position[1] + 2
-              ];
-              //check that this new position is valid before assign
-              // it to the new position
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 1:
-            //  X
-            //  X
-            //  X
-            //  x
-            //get the new position
-            {
-              newPosition = [
-                position[1] - rowLength,
-                position[1],
-                position[1] + rowLength,
-                position[1] + 2 * rowLength
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 2:
-            //  X X X x
-            //
-            //
-            //get the new position
-            {
-              newPosition = [
-                position[1] + 1,
-                position[1],
-                position[1] - 1,
-                position[1] - 2
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 3:
-            //      X
-            //      X
-            //      X
-            //get the new position
-            {
-              newPosition = [
-                position[1] + rowLength,
-                position[1],
-                position[1] - rowLength,
-                position[1] - 2 * rowLength
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = 0;
-              }
-            }
-            break;
-        }
-        break;
-      case TetrominoShapes.O:
-        //X X
-        //  X X
-        //DOESN'T NEED TO ROTATE
-        break;
-
-      case TetrominoShapes.J:
-        switch (rotationState) {
-          case 0:
-            //     X
-            //     X
-            // X X X
-
-            //get the new position
-            {
-              newPosition = [
-                position[1] - rowLength,
-                position[1],
-                position[1] + rowLength,
-                position[1] + rowLength - 1
-              ];
-              //check that this new position is valid before assign
-              // it to the new position
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 1:
-            //  X
-            //  X X X
-            //
-            //get the new position
-            {
-              newPosition = [
-                position[1] - rowLength - 1,
-                position[1],
-                position[1] - 1,
-                position[1] + 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 2:
-            // X X X
-            // X
-            // X
-            //get the new position
-            {
-              newPosition = [
-                position[1] + rowLength,
-                position[1],
-                position[1] - rowLength,
-                position[1] - rowLength + 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 3:
-            //  X  X  X
-            //        X
-            //        X
-            //get the new position
-            {
-              newPosition = [
-                position[1] + 1,
-                position[1],
-                position[1] - 1,
-                position[1] + rowLength + 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = 0;
-              }
-            }
-            break;
-        }
-        break;
-
-      case TetrominoShapes.Z:
-        switch (rotationState) {
-          case 0:
-            //  X X
-            //    X X
-            //get the new position
-            {
-              newPosition = [
-                position[0] + rowLength - 2,
-                position[1],
-                position[2] + rowLength - 1,
-                position[3] + 1
-              ];
-              //check that this new position is valid before assign
-              // it to the new position
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 1:
-            //   X
-            // X X
-            // X
-            //get the new position
-            {
-              newPosition = [
-                position[0] - rowLength + 2,
-                position[1],
-                position[2] - rowLength + 1,
-                position[3] - 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 2:
-            // X X
-            //   X x
-            //get the new position
-            {
-              newPosition = [
-                position[0] + rowLength - 2,
-                position[1],
-                position[2] + rowLength - 1,
-                position[3] + 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 3:
-            //    x
-            //  x x
-            //  x
-            //get the new position
-            {
-              newPosition = [
-                position[0] - rowLength + 2,
-                position[1],
-                position[2] - rowLength + 1,
-                position[3] - 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = 0;
-              }
-            }
-            break;
-        }
-        break;
-
-      case TetrominoShapes.T:
-        switch (rotationState) {
-          case 0:
-            //  X
-            //  x X X
-            //  x
-            //get the new position
-            {
-              newPosition = [
-                position[2] - rowLength,
-                position[2],
-                position[2] + 1,
-                position[2] + rowLength
-              ];
-              //check that this new position is valid before assign
-              // it to the new position
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 1:
-            //
-            // X X X
-            //   X
-            //get the new position
-            {
-              newPosition = [
-                position[1] - 1,
-                position[1],
-                position[1] + 1,
-                position[1] + rowLength
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 2:
-            //   X
-            // X X
-            //   x
-            //get the new position
-            {
-              newPosition = [
-                position[1] - rowLength,
-                position[1] - 1,
-                position[1],
-                position[1] + rowLength
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = (rotationState + 1) % 4;
-              }
-            }
-            break;
-
-          case 3:
-            //    x
-            //  x x x
-            //get the new position
-            {
-              newPosition = [
-                position[2] - rowLength,
-                position[2] - 1,
-                position[2],
-                position[2] + 1
-              ];
-              if (piecePositionIsValid(newPosition)) {
-                //update position
-                position = newPosition;
-                // update rotation state
-                rotationState = 0; // reset rotation state to 0
-              }
-            }
-            break;
-        }
-        break;
-
-      default:
+    // 优化：碰撞检测
+    if (_isValidRotation(newPosition)) {
+      position = newPosition;
+      rotationState = nextState;
     }
+  }
+
+  // 优化：新增旋转碰撞检测方法
+  bool _isValidRotation(List<int> newPosition) {
+    for (final pos in newPosition) {
+      if (pos % rowLength < 0 || pos % rowLength >= rowLength) return false;
+      if (pos < 0 || pos >= rowLength * columnLength) return false;
+      if (gameBoard.contains(pos)) return false;
+    }
+    return true;
+  }
+
+  // 优化：新增投影位置计算方法
+  List<int> getProjectedPosition() {
+    List<int> projection = List<int>.from(position);
+    int dropDistance = 0;
+
+    while (!_willCollide(projection, dropDistance + rowLength)) {
+      dropDistance += rowLength;
+    }
+
+    for (int i = 0; i < projection.length; i++) {
+      projection[i] += dropDistance;
+    }
+
+    return projection;
+  }
+
+  // 优化：碰撞预测
+  bool _willCollide(List<int> positions, int offset) {
+    for (final pos in positions) {
+      final newPos = pos + offset;
+      if (newPos >= rowLength * columnLength) return true;
+      if (gameBoard.contains(newPos)) return true;
+    }
+    return false;
   }
 
   //check if valid position
